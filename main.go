@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -35,12 +34,6 @@ func handleInput() string {
 		if unit == "-v" {
 			panic("malformed input")
 		}
-	}
-
-	err := godotenv.Load()
-
-	if err != nil {
-		log.Fatal("Error loading .env file")
 	}
 	return unit
 }
@@ -69,13 +62,20 @@ func checkInDB(units *mongo.Collection, unit string) (item Unit, err error) {
 var verbose = false
 
 func main() {
-	unit := handleInput()   // handle user input
+	unit := handleInput() // handle user input
+
+	err := godotenv.Load() //attempt to load values in .env file, if present
+
+	if verbose && err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
 	collection := setupDB() //setup database configuration
 
 	var myUnit Unit
 
 	/*check if item already exists in db*/
-	myUnit, err := checkInDB(collection, unit)
+	myUnit, err = checkInDB(collection, unit)
 
 	if verbose && err != nil {
 		fmt.Println("failed to retreive unit from database")

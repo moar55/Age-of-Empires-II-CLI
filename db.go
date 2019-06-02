@@ -11,8 +11,12 @@ import (
 )
 
 func setupDB() *mongo.Collection {
+	dbURI := os.Getenv("DATABASE_URI")
+	if dbURI == "" {
+		log.Fatal("missing DB URI!")
+	}
 	// Set client options
-	clientOptions := options.Client().ApplyURI(os.Getenv("DATABASE_URI"))
+	clientOptions := options.Client().ApplyURI(dbURI)
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(context.TODO(), clientOptions)
