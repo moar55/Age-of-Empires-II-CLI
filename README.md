@@ -6,8 +6,6 @@ A CLI appllication that outputs infromation about units in Age of Empires II
 * or alternatively run `export DATABASE_URI = <local_mongodb_ur>`
 * run `go build`
 * run `./Age-of-Empires-II-CLI`
-Note this only works on linux/uni for windows
-
 
 ## Steps to install application systemwide:
 * run `go install`
