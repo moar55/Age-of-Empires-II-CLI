@@ -13,3 +13,6 @@
 
 #environmental variables file
 .env
+
+#packages 
+vendor/
