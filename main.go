@@ -1,47 +1,110 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
+	"strconv"
+
+	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
-// Unit data type, a struct containing all
-// data of an Age of Empires unit
-type Unit struct {
-	ID                                int `json:"id"`
-	Name, Description, Expansion, Age string
-	CreatedIn                         string `json:"created_in"`
-	Cost                              struct {
-		Wood int
-		Gold int
-	} `json:"cost"`
-	BuildTime       int     `json:"build_time"`
-	ReloadTime      float32 `json:"reload_time"`
-	AttackDelay     float32 `json:"attack_delay"`
-	MovementRate    float32 `json:"movement_rate"`
-	LineOfSight     int     `json:"line_of_sight"`
-	HitPoints       int     `json:"hit_points"`
-	MyRange         int     `json:"range"`
-	Attack          int
-	Armor, Accuracy string
+func handleInput() string {
+	if len(os.Args) == 1 { // check that input is passed
+		panic("Unit name or id must be provided!")
+	}
+
+	var unit string
+
+	if len(os.Args) == 3 {
+		if os.Args[1] == "-v" { //check for verbose flag as first input
+			verbose = true
+			unit = os.Args[2] //unit name or id passed through command line argument
+		} else {
+			panic("malformed input")
+		}
+	} else {
+		unit = os.Args[1] //input is of size 1, expecting an id or name as input
+		if unit == "-v" {
+			panic("malformed input")
+		}
+	}
+
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	return unit
 }
 
-func get(url string) *http.Response {
-	resp, err := http.Get("https://age-of-empires-2-api.herokuapp.com/api/v1/unit/1")
+func checkInDB(units *mongo.Collection, unit string) (item Unit, err error) {
+	var myUnit Unit
+	unitInt, err := strconv.Atoi(unit) //try to convert usre input
+	var filter bson.D
+
 	if err != nil {
-		panic("oops")
+		filter = bson.D{{"name", unit}} //create a bson document query to search for unit by name
+	} else {
+		filter = bson.D{{"id", unitInt}} //similar to the above but searching for unity by id
 	}
-	return resp
+
+	err = units.FindOne(context.TODO(), filter).Decode(&myUnit) //query database for unit using filter
+
+	if err != nil {
+		return myUnit, err // return emtpy Unit struct and err
+	}
+
+	return myUnit, nil // return unit fetched from db
 }
+
+//Verbose flag, if true less important logs will be printed
+var verbose = false
 
 func main() {
-	resp := get("https://age-of-empires-2-api.herokuapp.com/api/v1/unit/1")
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	unit := handleInput()   // handle user input
+	collection := setupDB() //setup database configuration
+
 	var myUnit Unit
-	json.Unmarshal(body, &myUnit)
-	fmt.Println(myUnit)
+
+	/*check if item already exists in db*/
+	myUnit, err := checkInDB(collection, unit)
+
+	if verbose && err != nil {
+		fmt.Println("failed to retreive unit from database")
+	} else if err != nil {
+		marshalled, _ := json.MarshalIndent(myUnit, "", " ") //marshal myUnit struct with indentation for readability
+		fmt.Println(string(marshalled))                      //convert marshalled byte sequence to string
+		return
+	}
+
+	/*failed to retrieve unit from db*/
+
+	//fetch the desired unit from API
+	resp, err := http.Get("https://age-of-empires-2-api.herokuapp.com/api/v1/unit/" + unit)
+
+	if err != nil { // check for errrors in fetching the data
+		panic("Error retrieving unit data")
+	}
+
+	defer resp.Body.Close() //close reader when main returns
+
+	body, _ := ioutil.ReadAll(resp.Body) //read from reader
+	json.Unmarshal(body, &myUnit)        //unmarshall body byte sequence to be stored as a Unit struct
+
+	_, err = collection.InsertOne(context.TODO(), myUnit) //save result in database
+
+	if verbose && err != nil {
+		fmt.Println("failed to cache results", err)
+	}
+
+	fmt.Println(string(body))
 
 }
