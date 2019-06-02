@@ -16,4 +16,4 @@ Note this only works on linux/uni for windows
 
 Note: 
 * Building steps work for linux and mac only.
-* You can set the DATABASE_URI in ~/.bashrc but I am not sure if that's very secure :thinking:
+* You can set the DATABASE_URI in ~/.bashrc but I am not sure if that's secure :joy:
