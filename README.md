@@ -14,4 +14,4 @@ A CLI appllication that outputs infromation about units in Age of Empires II
 
 Note: 
 * Building steps work for linux and mac only.
-* You can set the DATABASE_URI in ~/.bashrc but I am not sure if that's secure :joy:
+* You can set the DATABASE_URI in ~/.bashrc and source it, but I am not sure if that's secure :joy:
